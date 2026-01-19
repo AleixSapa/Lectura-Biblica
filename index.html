@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html lang="ca">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pla de Lectura Bíblica</title>
+
+    <!-- Estils i Fonts -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Llibreries React i Supabase -->
+    <script
+      crossorigin
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+    ></script>
+    <script
+      crossorigin
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <!-- Configuració Tailwind -->
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              serif: ["Merriweather", "serif"],
+            },
+            colors: {
+              bible: {
+                50: "#fcfaf8",
+                100: "#f6f1eb",
+                200: "#efe6db",
+                300: "#dfd0bf",
+                400: "#c5a98d",
+                500: "#ae8a68",
+                600: "#957053",
+                700: "#7a5a46",
+                800: "#644b3e",
+                900: "#513d35",
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <style>
+      /* Animacions personalitzades */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animate-in {
+        animation: fadeIn 0.5s ease-out forwards;
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+      }
+    </style>
+  </head>
+  <body class="bg-bible-50 text-gray-800">
+    <div id="root"></div>
+
+    <!-- Codi de l'Aplicació -->
+    <script type="text/babel">
+      const { useState, useEffect, useMemo, useCallback } = React;
+
+      // --- ICONES (SVG Inline per evitar dependències externes complexes) ---
+      const IconCheck = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      );
+      const IconBookOpen = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+      );
+      const IconListMusic = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <path d="M21 15V6"></path>
+          <path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z"></path>
+          <path d="M12 12H3"></path>
+          <path d="M16 6H3"></path>
+          <path d="M12 18H3"></path>
+        </svg>
+      );
+      const IconCalendarDays = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+          <line x1="16" x2="16" y1="2" y2="6"></line>
+          <line x1="8" x2="8" y1="2" y2="6"></line>
+          <line x1="3" x2="21" y1="10" y2="10"></line>
+          <path d="M8 14h.01"></path>
+          <path d="M12 14h.01"></path>
+          <path d="M16 14h.01"></path>
+          <path d="M8 18h.01"></path>
+          <path d="M12 18h.01"></path>
+          <path d="M16 18h.01"></path>
+        </svg>
+      );
+      const IconCalendarClock = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"></path>
+          <path d="M16 2v4"></path>
+          <path d="M8 2v4"></path>
+          <path d="M3 10h5"></path>
+          <path d="M17.5 17.5 16 16.25V14"></path>
+          <path d="M22 16a6 6 0 1 1-12 0 6 6 0 0 1 12 0Z"></path>
+        </svg>
+      );
+      const IconTrophy = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+          <path d="M4 22h16"></path>
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path>
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path>
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+        </svg>
+      );
+      const IconWifiOff = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <path d="M2 2 22 22"></path>
+          <path d="M8.5 8.5A6 6 0 0 1 12 8c1.38 0 2.63.45 3.64 1.21"></path>
+          <path d="M15.3 15.3A6 6 0 0 0 5 15"></path>
+          <path d="M5 9a10 10 0 0 1 5.2-1.5"></path>
+          <path d="M19.1 19.1A10 10 0 0 0 19 9"></path>
+          <path d="M2 5a14 14 0 0 1 14.85 0"></path>
+          <path d="M21.1 10.3a14 14 0 0 1 .9 8.7"></path>
+          <path d="M12 20h.01"></path>
+        </svg>
+      );
+      const IconCheckCircle2 = ({ size = 24, className = "" }) => (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={className}
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      );
+
+      // --- DADES (data.ts) ---
+      const READING_PLAN = [
+        {
+          id: 1,
+          title: "Fase 1: Lectura Creuada",
+          description:
+            "Llegeix una línia de l'esquerra (Antic T.) i una de la dreta (Nou T.) cada dia.",
+          blocks: [
+            {
+              id: 1,
+              title: "Bloc 1: Història vs. Evangeli",
+              description: "Gènesi i Lluc",
+              left: [{ book: "Gènesi", start: 9, end: 27 }],
+              right: [{ book: "Lluc", start: 6, end: 24 }],
+            },
+            {
+              id: 2,
+              title: "Bloc 2: Història vs. Doctrina",
+              description: "Gènesi i Romans",
+              left: [{ book: "Gènesi", start: 28, end: 43 }],
+              right: [{ book: "Romans", start: 1, end: 16 }],
+            },
+            {
+              id: 3,
+              title: "Bloc 3: Final Gènesi/Daniel vs. Història Església",
+              description: "Final Gènesi, Daniel, Èxode i Fets",
+              left: [
+                { book: "Gènesi", start: 44, end: 50 },
+                { book: "Daniel", start: 1, end: 12 },
+                { book: "Èxode", start: 1, end: 9 },
+              ],
+              right: [{ book: "Fets dels Apòstols", start: 1, end: 28 }],
+            },
+            {
+              id: 4,
+              title: "Bloc 4: Èxode vs. Evangeli d'Acció",
+              description: "Èxode i Marc",
+              left: [{ book: "Èxode", start: 10, end: 25 }],
+              right: [{ book: "Marc", start: 1, end: 16 }],
+            },
+            {
+              id: 5,
+              title: "Bloc 5: Èxode Final/Jutges vs. Problemes d'Església",
+              description: "Èxode, Jutges i 1 Corintis",
+              left: [
+                { book: "Èxode", start: 26, end: 40 },
+                { book: "Jutges", start: 1, end: 1 },
+              ],
+              right: [{ book: "1 Corintis", start: 1, end: 16 }],
+            },
+            {
+              id: 6,
+              title: "Bloc 6: Jutges vs. Identitat",
+              description: "Jutges i Efesis",
+              left: [{ book: "Jutges", start: 2, end: 7 }],
+              right: [{ book: "Efesis", start: 1, end: 6 }],
+            },
+            {
+              id: 7,
+              title: "Bloc 7: Jutges/Isaïes vs. El Regne",
+              description: "Jutges, Isaïes i Mateu",
+              left: [
+                { book: "Jutges", start: 8, end: 21 },
+                { book: "Isaïes", start: 1, end: 14 },
+              ],
+              right: [{ book: "Mateu", start: 1, end: 28 }],
+            },
+            {
+              id: 8,
+              title: "Bloc 8: Isaïes vs. Cartes Petites",
+              description: "Isaïes, Filipencs i Colossencs",
+              left: [{ book: "Isaïes", start: 15, end: 22 }],
+              right: [
+                { book: "Filipencs", start: 1, end: 4 },
+                { book: "Colossencs", start: 1, end: 4 },
+              ],
+            },
+            {
+              id: 9,
+              title: "Bloc 9: Isaïes vs. Hebreus",
+              description: "Isaïes i Hebreus",
+              left: [{ book: "Isaïes", start: 23, end: 35 }],
+              right: [{ book: "Hebreus", start: 1, end: 13 }],
+            },
+            {
+              id: 10,
+              title: "Bloc 10: Isaïes vs. Joan",
+              description: "Isaïes i Joan",
+              left: [{ book: "Isaïes", start: 36, end: 56 }],
+              right: [{ book: "Joan", start: 1, end: 21 }],
+            },
+            {
+              id: 11,
+              title: "Bloc 11: Isaïes Final/Levític vs. Cartes Finals",
+              description: "Final Isaïes, Levític, 1 Samuel i resta NT",
+              left: [
+                { book: "Isaïes", start: 57, end: 66 },
+                { book: "Levític", start: 1, end: 27 },
+                { book: "1 Samuel", start: 1, end: 23 },
+              ],
+              right: [
+                { book: "1 Tessalonicencs", start: 1, end: 5 },
+                { book: "2 Tessalonicencs", start: 1, end: 3 },
+                { book: "1 Timoteu", start: 1, end: 6 },
+                { book: "2 Timoteu", start: 1, end: 4 },
+                { book: "Jaume", start: 1, end: 5 },
+                { book: "2 Pere", start: 1, end: 3 },
+                { book: "1 Joan", start: 1, end: 5 },
+                { book: "2 Corintis", start: 1, end: 13 },
+                { book: "Apocalipsi", start: 7, end: 22 },
+              ],
+            },
+          ],
+        },
+        {
+          id: 2,
+          title: "Fase 2: Només Antic Testament",
+          description:
+            "Llegeix 2 capítols al dia seguint aquest ordre estricte fins acabar la Bíblia.",
+          blocks: [
+            {
+              id: 12,
+              title: "Lectura Final AT",
+              description: "Seqüència final de llibres (2 al dia)",
+              left: [
+                { book: "1 Samuel", start: 24, end: 31 },
+                { book: "Proverbis", start: 1, end: 31 },
+                { book: "Jeremies", start: 1, end: 52 },
+                { book: "Eclesiastès", start: 1, end: 12 },
+                { book: "Nombres", start: 1, end: 36 },
+                { book: "2 Samuel", start: 1, end: 24 },
+                { book: "Ezequiel", start: 1, end: 48 },
+                { book: "Deuteronomi", start: 6, end: 34 },
+                { book: "Osees", start: 1, end: 14 },
+                { book: "1 Reis", start: 1, end: 22 },
+                { book: "Job", start: 28, end: 42 },
+                { book: "Miquees", start: 1, end: 7 },
+                { book: "2 Reis", start: 1, end: 25 },
+                { book: "Nahum", start: 1, end: 3 },
+                { book: "1 Cròniques", start: 1, end: 29 },
+                { book: "Habacuc", start: 1, end: 3 },
+                { book: "2 Cròniques", start: 1, end: 36 },
+                { book: "Sofonies", start: 1, end: 3 },
+                { book: "Esdres", start: 1, end: 10 },
+                { book: "Zacaries", start: 1, end: 14 },
+                { book: "Nehemies", start: 1, end: 13 },
+                { book: "Malaquies", start: 1, end: 4 },
+                { book: "Ester", start: 1, end: 10 },
+                { book: "Lamentacions", start: 1, end: 5 },
+                { book: "Càntic dels Càntics", start: 1, end: 8 },
+              ],
+              right: [],
+            },
+          ],
+        },
+      ];
+
+      // --- SUPABASE SETUP ---
+      const supabaseUrl = "https://hocwnqqdyyinjrtczhdw.supabase.co";
+      const supabaseKey = "sb_publishable_X_TrrWex0GfBLIzbKFp1Cg_Xa97mziS";
+      const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+      // --- UTILS ---
+      const getChapterId = (book, chapter) => `${book}-${chapter}`;
+
+      function expandRange(ranges) {
+        const items = [];
+        ranges.forEach((r) => {
+          for (let i = r.start; i <= r.end; i++) {
+            items.push({ book: r.book, chapter: i });
+          }
+        });
+        return items;
+      }
+
+      function generateDailyPlan(phases) {
+        const days = [];
+        let globalDayCounter = 1;
+        // Data d'inici: 19 de gener de 2026 (mes 0 = gener)
+        const startDate = new Date(2026, 0, 19);
+
+        const getTargetDate = (dayOffset) => {
+          const d = new Date(startDate);
+          d.setDate(d.getDate() + dayOffset);
+          return d;
+        };
+
+        // Fase 1
+        const phase1 = phases[0];
+        phase1.blocks.forEach((block) => {
+          const leftItems = expandRange(block.left);
+          const rightItems = expandRange(block.right);
+          const count = Math.max(leftItems.length, rightItems.length);
+
+          for (let i = 0; i < count; i++) {
+            const items = [];
+            if (leftItems[i]) items.push(leftItems[i]);
+            if (rightItems[i]) items.push(rightItems[i]);
+            days.push({
+              dayNumber: globalDayCounter,
+              date: getTargetDate(globalDayCounter - 1),
+              phaseId: phase1.id,
+              blockId: block.id,
+              blockTitle: block.title,
+              items,
+            });
+            globalDayCounter++;
+          }
+        });
+
+        // Fase 2
+        const phase2 = phases[1];
+        const allPhase2Items = [];
+        phase2.blocks.forEach((block) => {
+          allPhase2Items.push(...expandRange(block.left));
+        });
+
+        for (let i = 0; i < allPhase2Items.length; i += 2) {
+          const items = [];
+          items.push(allPhase2Items[i]);
+          if (allPhase2Items[i + 1]) items.push(allPhase2Items[i + 1]);
+          days.push({
+            dayNumber: globalDayCounter,
+            date: getTargetDate(globalDayCounter - 1),
+            phaseId: phase2.id,
+            blockId: 12,
+            blockTitle: "Fase 2: Antic Testament",
+            items,
+          });
+          globalDayCounter++;
+        }
+        return days;
+      }
+
+      // --- HOOKS ---
+      const USER_ID_KEY = "bible-app-user-id";
+      const LOCAL_STORAGE_BACKUP_KEY = "bible-app-progress-backup";
+
+      function useReadingProgress() {
+        const [completed, setCompleted] = useState({});
+        const [isLoaded, setIsLoaded] = useState(false);
+        const [userId, setUserId] = useState(null);
+        const [isOffline, setIsOffline] = useState(false);
+
+        // Inicialitzar ID d'usuari
+        useEffect(() => {
+          let storedId = localStorage.getItem(USER_ID_KEY);
+          if (!storedId) {
+            if (typeof crypto !== "undefined" && crypto.randomUUID) {
+              storedId = crypto.randomUUID();
+            } else {
+              storedId = "user-" + Math.random().toString(36).substring(2, 15);
+            }
+            localStorage.setItem(USER_ID_KEY, storedId);
+          }
+          setUserId(storedId);
+        }, []);
+
+        // Obtenir dades
+        useEffect(() => {
+          if (!userId) return;
+
+          const fetchProgress = async () => {
+            try {
+              const { data, error } = await supabase
+                .from("readings")
+                .select("book, chapter")
+                .eq("user_id", userId);
+
+              if (error) throw error;
+
+              if (data) {
+                const loadedState = {};
+                data.forEach((row) => {
+                  loadedState[getChapterId(row.book, row.chapter)] = true;
+                });
+                setCompleted(loadedState);
+                localStorage.setItem(
+                  LOCAL_STORAGE_BACKUP_KEY,
+                  JSON.stringify(loadedState)
+                );
+                setIsOffline(false);
+              }
+            } catch (error) {
+              const msg = error.message || "";
+              if (
+                msg.includes("Could not find the table") ||
+                msg.includes("Failed to fetch")
+              ) {
+                console.warn(
+                  "Mode Offline: Taula no trobada o error de xarxa."
+                );
+                setIsOffline(true);
+              }
+              const backup = localStorage.getItem(LOCAL_STORAGE_BACKUP_KEY);
+              if (backup) {
+                try {
+                  setCompleted(JSON.parse(backup));
+                } catch (e) {}
+              }
+            } finally {
+              setIsLoaded(true);
+            }
+          };
+          fetchProgress();
+        }, [userId]);
+
+        const toggleChapter = useCallback(
+          async (book, chapter) => {
+            if (!userId) return;
+            const id = getChapterId(book, chapter);
+            const wasCompleted = !!completed[id];
+
+            // Optimistic Update
+            setCompleted((prev) => {
+              const newState = { ...prev, [id]: !wasCompleted };
+              localStorage.setItem(
+                LOCAL_STORAGE_BACKUP_KEY,
+                JSON.stringify(newState)
+              );
+              return newState;
+            });
+
+            if (isOffline) return;
+
+            try {
+              if (wasCompleted) {
+                const { error } = await supabase
+                  .from("readings")
+                  .delete()
+                  .match({ user_id: userId, book, chapter });
+                if (error) throw error;
+              } else {
+                const { error } = await supabase
+                  .from("readings")
+                  .insert({ user_id: userId, book, chapter });
+                if (error) throw error;
+              }
+            } catch (error) {
+              console.error("Error de sincronització:", error);
+            }
+          },
+          [completed, userId, isOffline]
+        );
+
+        const isChapterCompleted = useCallback(
+          (book, chapter) => {
+            return !!completed[getChapterId(book, chapter)];
+          },
+          [completed]
+        );
+
+        return {
+          completed,
+          toggleChapter,
+          isChapterCompleted,
+          isLoaded,
+          isOffline,
+        };
+      }
+
+      // --- COMPONENTS ---
+
+      const ConfirmationModal = ({ isOpen, onConfirm, onCancel }) => {
+        if (!isOpen) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in">
+            <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 transform transition-all scale-100">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <IconCheckCircle2 size={32} />
+                </div>
+                <h3 className="text-xl font-serif font-bold text-gray-900 mb-2">
+                  Marcar com a llegit?
+                </h3>
+                <p className="text-gray-500">
+                  Has completat totes les lectures d'aquest dia?
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={onCancel}
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  No, espera
+                </button>
+                <button
+                  onClick={onConfirm}
+                  className="flex-1 px-4 py-3 rounded-xl bg-bible-600 text-white font-bold hover:bg-bible-700 shadow-md hover:shadow-lg transition-all"
+                >
+                  Sí, fet!
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const DailyReadingCard = ({ day, isCompleted, onItemClick }) => {
+        const itemsStatus = day.items.map((item) => ({
+          ...item,
+          done: isCompleted(item.book, item.chapter),
+        }));
+        const allDone = itemsStatus.every((i) => i.done);
+        const unreadCount = itemsStatus.filter((i) => !i.done).length;
+
+        const isToday = new Date().toDateString() === day.date.toDateString();
+        const isYesterday =
+          new Date(Date.now() - 86400000).toDateString() ===
+          day.date.toDateString();
+
+        let dateLabel = day.date.toLocaleDateString("ca-ES", {
+          day: "numeric",
+          month: "long",
+        });
+        if (isToday) dateLabel = "Avui, " + dateLabel;
+        if (isYesterday) dateLabel = "Ahir, " + dateLabel;
+        const dayOfMonth = day.date.getDate();
+
+        const handleItemClick = (item, done) => {
+          if (done) onItemClick(item, false);
+          else onItemClick(item, unreadCount === 1);
+        };
+
+        return (
+          <div
+            className={`bg-white rounded-xl shadow-sm border mb-4 overflow-hidden transition-all duration-300 ${
+              allDone
+                ? "border-green-200 bg-green-50/50 opacity-75"
+                : "border-bible-200"
+            }`}
+          >
+            <div
+              className={`px-4 py-3 border-b flex justify-between items-center ${
+                isToday
+                  ? "bg-bible-100/50 border-bible-200"
+                  : "bg-gray-50 border-gray-100"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm border ${
+                    isToday
+                      ? "bg-bible-600 text-white border-bible-600"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  {dayOfMonth}
+                </div>
+                <div className="flex flex-col">
+                  <span
+                    className={`text-sm font-bold ${
+                      isToday ? "text-bible-800" : "text-gray-700"
+                    }`}
+                  >
+                    {dateLabel}
+                  </span>
+                  {day.dayNumber === 1 && (
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">
+                      Inici del pla
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-gray-400 truncate max-w-[120px] sm:max-w-[200px]">
+                {day.blockTitle}
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              {itemsStatus.map((item) => (
+                <button
+                  key={`${item.book}-${item.chapter}`}
+                  onClick={() => handleItemClick(item, item.done)}
+                  className={`w-full flex items-center p-3 rounded-lg border transition-all duration-200 group ${
+                    item.done
+                      ? "bg-green-600 border-green-600 text-white shadow-sm"
+                      : "bg-white border-gray-200 text-gray-700 hover:border-bible-400 hover:shadow-md"
+                  }`}
+                >
+                  <div
+                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-4 transition-colors ${
+                      item.done
+                        ? "border-white bg-transparent"
+                        : "border-gray-300 group-hover:border-bible-400"
+                    }`}
+                  >
+                    {item.done && (
+                      <IconCheck size={14} className="text-white" />
+                    )}
+                  </div>
+                  <div className="flex-1 text-left">
+                    <span
+                      className={`text-lg font-serif ${
+                        item.done ? "font-bold" : "font-medium"
+                      }`}
+                    >
+                      {item.book}
+                    </span>
+                    <span
+                      className={`ml-2 text-lg font-sans ${
+                        item.done ? "opacity-90" : "text-gray-500"
+                      }`}
+                    >
+                      {item.chapter}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      };
+
+      const PsalmsTracker = ({ isCompleted, onToggle }) => {
+        const totalPsalms = 150;
+        const psalms = Array.from({ length: totalPsalms }, (_, i) => i + 1);
+        const completedCount = psalms.filter((p) =>
+          isCompleted("Salms", p)
+        ).length;
+        const percentage = Math.round((completedCount / totalPsalms) * 100);
+
+        return (
+          <div className="pb-8 animate-in">
+            <div className="bg-white rounded-xl shadow-sm border border-bible-200 p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-bible-900">
+                    Llibre de Salms
+                  </h2>
+                  <p className="text-gray-500 text-sm">
+                    Lectura lliure addicional
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-3xl font-bold text-bible-600">
+                    {completedCount}
+                  </span>
+                  <span className="text-gray-400 text-sm font-medium">
+                    /150
+                  </span>
+                </div>
+              </div>
+              <div className="w-full bg-gray-100 rounded-full h-3 mb-2">
+                <div
+                  className="bg-bible-500 h-3 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              <p className="text-xs text-right text-gray-400">
+                {percentage}% Completat
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-bible-200 p-4">
+              <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-3">
+                {psalms.map((psalm) => {
+                  const done = isCompleted("Salms", psalm);
+                  return (
+                    <button
+                      key={psalm}
+                      onClick={() => onToggle("Salms", psalm)}
+                      className={`aspect-square flex flex-col items-center justify-center rounded-xl transition-all duration-200 relative ${
+                        done
+                          ? "bg-bible-600 text-white shadow-inner scale-95"
+                          : "bg-bible-50 text-bible-800 border border-bible-100 hover:border-bible-300 hover:shadow-md"
+                      }`}
+                    >
+                      <span
+                        className={`text-lg font-bold ${
+                          done ? "opacity-100" : "opacity-80"
+                        }`}
+                      >
+                        {psalm}
+                      </span>
+                      {done && (
+                        <div className="absolute bottom-1 right-1 opacity-50">
+                          <IconCheck size={16} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const App = () => {
+        const {
+          completed,
+          toggleChapter,
+          isChapterCompleted,
+          isLoaded,
+          isOffline,
+        } = useReadingProgress();
+        const [showConfirm, setShowConfirm] = useState(false);
+        const [pendingToggle, setPendingToggle] = useState(null);
+        const [view, setView] = useState("plan");
+
+        const dailyPlan = useMemo(() => generateDailyPlan(READING_PLAN), []);
+
+        const stats = useMemo(() => {
+          let totalChapters = 0;
+          let completedChapters = 0;
+          dailyPlan.forEach((day) => {
+            day.items.forEach((item) => {
+              totalChapters++;
+              if (isChapterCompleted(item.book, item.chapter))
+                completedChapters++;
+            });
+          });
+          return { total: totalChapters, done: completedChapters };
+        }, [dailyPlan, isChapterCompleted]);
+
+        const visibleDays = useMemo(() => {
+          const today = new Date();
+          today.setHours(23, 59, 59, 999);
+          const relevantDays = dailyPlan.filter((day) => {
+            if (day.date > today) return false;
+            const isFullyComplete = day.items.every((item) =>
+              isChapterCompleted(item.book, item.chapter)
+            );
+            return !isFullyComplete;
+          });
+          return relevantDays.slice(-7);
+        }, [dailyPlan, isChapterCompleted]);
+
+        const handleItemClick = (item, isLastUnread) => {
+          if (isLastUnread) {
+            setPendingToggle(item);
+            setShowConfirm(true);
+          } else {
+            toggleChapter(item.book, item.chapter);
+          }
+        };
+
+        const confirmToggle = () => {
+          if (pendingToggle) {
+            toggleChapter(pendingToggle.book, pendingToggle.chapter);
+            setPendingToggle(null);
+            setShowConfirm(false);
+          }
+        };
+
+        const handleOfflineClick = () => {
+          alert(
+            "Mode Sense Connexió Activit\n\nL'aplicació no pot connectar amb la base de dades (Supabase). Això sol passar si no s'ha creat la taula 'readings'.\n\n1. Les teves dades es guarden en aquest dispositiu.\n2. Per arreglar-ho, executa l'script 'db_setup.sql' a Supabase."
+          );
+        };
+
+        if (!isLoaded) return null;
+
+        const todayDate = new Date().toLocaleDateString("ca-ES", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        });
+        const firstDay = dailyPlan[0];
+        const isPlanFuture = firstDay && firstDay.date > new Date();
+
+        return (
+          <div className="min-h-screen pb-24">
+            <header className="bg-white border-b border-bible-200 sticky top-0 z-20 shadow-sm/50 backdrop-blur-md bg-white/90">
+              <div className="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg transform rotate-3 transition-colors ${
+                      view === "plan"
+                        ? "bg-bible-600 shadow-bible-200"
+                        : "bg-teal-600 shadow-teal-200"
+                    }`}
+                  >
+                    {view === "plan" ? (
+                      <IconBookOpen size={20} />
+                    ) : (
+                      <IconListMusic size={20} />
+                    )}
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-serif font-bold text-bible-900 leading-none">
+                      {view === "plan" ? "Lectura Diària" : "Salms"}
+                    </h1>
+                    <p className="text-xs text-bible-500 font-medium mt-1 capitalize">
+                      {todayDate}
+                    </p>
+                  </div>
+                </div>
+                {view === "plan" && (
+                  <div className="flex items-center gap-3">
+                    {isOffline && (
+                      <button
+                        onClick={handleOfflineClick}
+                        className="bg-amber-50 text-amber-600 p-2 rounded-lg border border-amber-100 shadow-sm hover:bg-amber-100 transition-colors"
+                      >
+                        <IconWifiOff size={18} />
+                      </button>
+                    )}
+                    <div className="h-10 w-10 rounded-full bg-bible-50 flex items-center justify-center border border-bible-100">
+                      <span className="text-xs font-bold text-bible-700">
+                        {stats.total > 0
+                          ? Math.round((stats.done / stats.total) * 100)
+                          : 0}
+                        %
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {view === "plan" && (
+                <div className="w-full bg-gray-100 h-1">
+                  <div
+                    className="bg-bible-500 h-1 transition-all duration-500"
+                    style={{
+                      width: `${
+                        stats.total > 0 ? (stats.done / stats.total) * 100 : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              )}
+            </header>
+
+            <main className="max-w-md mx-auto px-4 py-6">
+              {view === "plan" ? (
+                visibleDays.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-2xl border border-green-100 shadow-sm animate-in">
+                    <div
+                      className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                        isPlanFuture
+                          ? "bg-amber-100 text-amber-600"
+                          : "bg-green-100 text-green-600"
+                      }`}
+                    >
+                      {isPlanFuture ? (
+                        <IconCalendarClock size={32} />
+                      ) : (
+                        <IconTrophy size={32} />
+                      )}
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">
+                      {isPlanFuture
+                        ? "El pla encara no ha començat"
+                        : "Tot al dia!"}
+                    </h2>
+                    <p className="text-gray-500 px-6 mb-6">
+                      {isPlanFuture
+                        ? `La primera lectura està programada per al ${firstDay?.date.toLocaleDateString(
+                            "ca-ES",
+                            { day: "numeric", month: "long", year: "numeric" }
+                          )}.`
+                        : "No tens lectures pendents per avui."}
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4 flex items-center gap-2 text-bible-800">
+                      <IconCalendarClock size={18} />
+                      <h2 className="text-md font-bold uppercase tracking-wide">
+                        Pendent
+                      </h2>
+                    </div>
+                    <div className="space-y-6">
+                      {visibleDays.map((day) => (
+                        <DailyReadingCard
+                          key={day.dayNumber}
+                          day={day}
+                          isCompleted={isChapterCompleted}
+                          onItemClick={handleItemClick}
+                        />
+                      ))}
+                      {visibleDays.length >= 7 && (
+                        <p className="text-center text-xs text-gray-400 italic mt-4 bg-gray-50 p-2 rounded-lg">
+                          Es mostren els 7 dies pendents més recents.
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )
+              ) : (
+                <PsalmsTracker
+                  isCompleted={isChapterCompleted}
+                  onToggle={toggleChapter}
+                />
+              )}
+            </main>
+
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe z-30">
+              <div className="flex justify-around max-w-md mx-auto">
+                <button
+                  onClick={() => setView("plan")}
+                  className={`flex flex-col items-center justify-center w-full py-3 transition-colors ${
+                    view === "plan"
+                      ? "text-bible-700 bg-bible-50"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <IconCalendarDays
+                    size={24}
+                    className={view === "plan" ? "fill-current" : ""}
+                  />
+                  <span className="text-[10px] font-bold mt-1 uppercase tracking-wider">
+                    Pla Diari
+                  </span>
+                </button>
+                <button
+                  onClick={() => setView("psalms")}
+                  className={`flex flex-col items-center justify-center w-full py-3 transition-colors ${
+                    view === "psalms"
+                      ? "text-teal-700 bg-teal-50"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <IconListMusic
+                    size={24}
+                    className={view === "psalms" ? "fill-current" : ""}
+                  />
+                  <span className="text-[10px] font-bold mt-1 uppercase tracking-wider">
+                    Salms
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <ConfirmationModal
+              isOpen={showConfirm}
+              onConfirm={confirmToggle}
+              onCancel={() => {
+                setPendingToggle(null);
+                setShowConfirm(false);
+              }}
+            />
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<App />);
+    </script>
+  </body>
+</html>
